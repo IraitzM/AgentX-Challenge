@@ -34,7 +34,7 @@ async def run():
     logger.info("Running the benchmark agent suite...")
 
     logger.info("Launching green agent...")
-    green_address = ("localhost", os.getenv("GREEN_AGENT_PORT", "9001"))
+    green_address = ("localhost", os.getenv("GREEN_AGENT_PORT", 9001))
     green_url = f"http://{green_address[0]}:{green_address[1]}"
     p_green = multiprocessing.Process(
         target=start_green_agent, args=("green", *green_address)
@@ -45,7 +45,7 @@ async def run():
 
     # start white agent
     logger.info("Launching white agent...")
-    white_address = ("localhost", os.getenv("WHITE_AGENT_PORT", "9002"))
+    white_address = ("localhost", os.getenv("WHITE_AGENT_PORT", 9002))
     white_url = f"http://{white_address[0]}:{white_address[1]}"
     p_white = multiprocessing.Process(
         target=start_white_agent, args=white_address

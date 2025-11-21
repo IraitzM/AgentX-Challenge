@@ -10,9 +10,12 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentSkill, AgentCard, AgentCapabilities
 from a2a.utils import new_agent_text_message
 
+from google import genai
+
 from loguru import logger
 
 import dotenv
+
 dotenv.load_dotenv()
 
 
@@ -49,6 +52,7 @@ class GeneralWhiteAgentExecutor(AgentExecutor):
         user_input = context.get_user_input()
         if context.context_id not in self.ctx_id_to_messages:
             self.ctx_id_to_messages[context.context_id] = []
+
         messages = self.ctx_id_to_messages[context.context_id]
         messages.append(
             {
@@ -56,6 +60,8 @@ class GeneralWhiteAgentExecutor(AgentExecutor):
                 "content": user_input,
             }
         )
+        # TODO: Complete white agent
+        """
         response = completion(
             messages=messages,
             model="google/gemini-2.5-pro",
@@ -63,6 +69,9 @@ class GeneralWhiteAgentExecutor(AgentExecutor):
             temperature=0.0,
         )
         next_message = response.choices[0].message.model_dump()  # type: ignore
+        """
+        next_message = {"content" : "TODO"}
+
         messages.append(
             {
                 "role": "assistant",

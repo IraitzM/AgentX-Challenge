@@ -39,7 +39,7 @@ async def ask_agent_to_solve(white_agent_url, env, task_index):
     """
 
     # Prepare the initial message to the white agent
-    context_id = 0
+    context_id = None
     task_description = """
         Your task is to solve the following challenge providing accurate information.
     """
@@ -102,13 +102,10 @@ class GreenAgentExecutor(AgentExecutor):
         res = await ask_agent_to_solve(white_agent_url, env, task_index)
 
         metrics["time_used"] = time.time() - timestamp_started
-        result_bool = metrics["success"] = res.reward == 1
-        result_emoji = "✅" if result_bool else "❌"
-
         logger.info("Green agent: Evaluation complete.")
         await event_queue.enqueue_event(
             new_agent_text_message(
-                f"Finished. White agent success: {result_emoji}\nMetrics: {metrics}\n"
+                f"Finished. \nMetrics: {metrics}\n"
             )
         )  # alternative, impl as a task-generating agent
 
