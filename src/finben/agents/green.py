@@ -4,6 +4,9 @@ import uvicorn
 import tomllib
 import json
 import time
+
+import pandas as pd
+
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -33,16 +36,19 @@ def load_agent_card_toml(agent_color:str):
         return tomllib.load(f)
 
 
-async def ask_agent_to_solve(white_agent_url, env, task_index):
+async def ask_agent_to_solve(white_agent_url, dataset_path, task_index):
     """
     Asks the white agent to solve a given task
     """
 
     # Prepare the initial message to the white agent
     context_id = None
-    task_description = """
-        Your task is to solve the following challenge providing accurate information.
-    """
+
+    # Select for id in the file
+    finben_data = pd.read_csv(dataset_path)
+    selected = finben_data.iloc[task_index,:]
+
+    task_description = selected["Question"]
 
     logger.info(
         f"@@@ Green agent: Sending message to white agent{'ctx_id=' + str(context_id) if context_id else ''}... -->\n{task_description}"
@@ -94,12 +100,14 @@ class GreenAgentExecutor(AgentExecutor):
             "Only single task supported for demo purpose"
         )
         task_index = env_config["task_ids"][0]
-        env = None
+        dataset_path = env_config["task_path"]
         metrics = {}
 
         logger.info("Green agent: Starting evaluation...")
         timestamp_started = time.time()
-        res = await ask_agent_to_solve(white_agent_url, env, task_index)
+        res = await ask_agent_to_solve(white_agent_url, dataset_path, task_index)
+
+        # Evaluate the response according to the dataset
 
         metrics["time_used"] = time.time() - timestamp_started
         logger.info("Green agent: Evaluation complete.")

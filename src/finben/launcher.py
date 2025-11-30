@@ -62,6 +62,7 @@ async def run():
         "user_model": "google/gemini-2.5-pro",
         "user_provider": "google",
         "task_split": "test",
+        "task_path" : "assets/data/public.csv",
         "task_ids": [1],
     }
     task_text = f"""

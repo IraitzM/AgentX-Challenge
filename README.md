@@ -2,6 +2,6 @@
 
 ## Pending
 
-[] Loop over the tasks
+[x] Indexed task
 [] Green agent evaluator
 [] White agent execution
