@@ -18,6 +18,7 @@ from a2a.types import (
     SendMessageResponse,
 )
 
+
 def parse_tags(str_with_tags: str) -> Dict[str, str]:
     """the target str contains tags in the format of <tag_name> ... </tag_name>, parse them out and return a dict"""
 
@@ -54,7 +55,7 @@ async def wait_agent_ready(url, timeout=10):
 
 
 async def send_message(
-    url, message, task_id=None, context_id:str = None
+    url, message, task_id=None, context_id: str = None
 ) -> SendMessageResponse:
     """
     Sends the message

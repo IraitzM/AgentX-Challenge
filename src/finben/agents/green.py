@@ -5,6 +5,8 @@ import tomllib
 import json
 import time
 
+import os
+from openai import OpenAI
 import pandas as pd
 
 from a2a.server.apps import A2AStarletteApplication
@@ -15,19 +17,16 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCard, SendMessageSuccessResponse, Message
 from a2a.utils import new_agent_text_message, get_text_parts
 
-#from tau_bench.agents.tool_calling_agent import ToolCallingAgent
-#from tau_bench.envs import get_env
-#from tau_bench.types import SolveResult, RESPOND_ACTION_NAME, Action
-
 from finben.utils import send_message, parse_tags
 
 from loguru import logger
 
 import dotenv
+
 dotenv.load_dotenv()
 
 
-def load_agent_card_toml(agent_color:str):
+def load_agent_card_toml(agent_color: str):
     """
     Loads the agent card associated with a particular color agent
     """
@@ -46,7 +45,7 @@ async def ask_agent_to_solve(white_agent_url, dataset_path, task_index):
 
     # Select for id in the file
     finben_data = pd.read_csv(dataset_path)
-    selected = finben_data.iloc[task_index,:]
+    selected = finben_data.iloc[task_index, :]
 
     task_description = selected["Question"]
 
@@ -70,20 +69,22 @@ async def ask_agent_to_solve(white_agent_url, dataset_path, task_index):
         )
 
     text_parts = get_text_parts(res_result.parts)
-    assert len(text_parts) == 1, (
-        "Expecting exactly one text part from the white agent"
-    )
+    assert len(text_parts) == 1, "Expecting exactly one text part from the white agent"
     white_text = text_parts[0]
     logger.info(f"@@@ White agent response:\n{white_text}")
 
     return white_text
+
 
 class GreenAgentExecutor(AgentExecutor):
     """
     Main green agent executor class
     """
     def __init__(self):
-        pass
+        self.client = OpenAI(
+            base_url="https://api.tokenfactory.nebius.com/v1/",
+            api_key=os.environ.get("NEBIUS_API_KEY"),
+        )
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         # parse the task
@@ -104,18 +105,56 @@ class GreenAgentExecutor(AgentExecutor):
 
         logger.info("Green agent: Starting evaluation...")
         timestamp_started = time.time()
-        res = await ask_agent_to_solve(white_agent_url, dataset_path, task_index)
+        received = await ask_agent_to_solve(white_agent_url, dataset_path, task_index)
 
         # Evaluate the response according to the dataset
         metrics = {}
         metrics["time_used"] = time.time() - timestamp_started
-        # TODO
+
+        # Select for id in the file
+        finben_data = pd.read_csv(dataset_path)
+        selected = finben_data.iloc[task_index, :]
+
+        question = selected["Question"]
+        answer = selected["Answer"]
+        expected_time = int(selected["Expert time (mins)"])
+        rubric_json = json.loads(selected["Rubric"].replace("'","\"")) # To avoid issues
+
+        metrics["time_drift"] = expected_time - metrics["time_used"]
+
+        metrics["rubric"] = [] # Per operation
+        for operation in rubric_json:
+            response = self.client.chat.completions.create(
+                model=env_config["user_model"],
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"""
+                            Your task is to check the {operation["operator"]} considering
+                            the provided question, received and expected answer.
+                        """
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": f"""
+                                Question: {question}
+
+                                Received answer: {received}
+                                Expected answer: {answer}
+                                """
+                            }
+                        ]
+                    }
+                ]
+            )
+            metrics["rubric"].append(response.to_json())
 
         logger.info("Green agent: Evaluation complete.")
         await event_queue.enqueue_event(
-            new_agent_text_message(
-                f"Finished. \nMetrics: {metrics}\n"
-            )
+            new_agent_text_message(f"Finished. \nMetrics: {metrics}\n")
         )  # alternative, impl as a task-generating agent
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
