@@ -15,7 +15,7 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCard, SendMessageSuccessResponse, Message
 from a2a.utils import new_agent_text_message, get_text_parts
 
-# from tau_bench.agents.tool_calling_agent import ToolCallingAgent
+#from tau_bench.agents.tool_calling_agent import ToolCallingAgent
 #from tau_bench.envs import get_env
 #from tau_bench.types import SolveResult, RESPOND_ACTION_NAME, Action
 
@@ -101,15 +101,16 @@ class GreenAgentExecutor(AgentExecutor):
         )
         task_index = env_config["task_ids"][0]
         dataset_path = env_config["task_path"]
-        metrics = {}
 
         logger.info("Green agent: Starting evaluation...")
         timestamp_started = time.time()
         res = await ask_agent_to_solve(white_agent_url, dataset_path, task_index)
 
         # Evaluate the response according to the dataset
-
+        metrics = {}
         metrics["time_used"] = time.time() - timestamp_started
+        # TODO
+
         logger.info("Green agent: Evaluation complete.")
         await event_queue.enqueue_event(
             new_agent_text_message(
