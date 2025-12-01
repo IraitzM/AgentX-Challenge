@@ -2,6 +2,6 @@
 
 ## Pending
 
-[x] Indexed task
-[] Green agent evaluator
-[] White agent execution
+- [x] Indexed task
+- [ ] Green agent evaluator
+- [ ] White/Purple agent execution
