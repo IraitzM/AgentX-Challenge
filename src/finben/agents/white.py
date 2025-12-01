@@ -10,7 +10,9 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentSkill, AgentCard, AgentCapabilities
 from a2a.utils import new_agent_text_message
 
-from google import genai
+import os
+import json
+from openai import OpenAI
 
 from loguru import logger
 
@@ -44,8 +46,13 @@ class GeneralWhiteAgentExecutor(AgentExecutor):
     """
     Simple white agent executor looking for the response to the task being sent
     """
+
     def __init__(self):
         self.ctx_id_to_messages = {}
+        self.client = OpenAI(
+            base_url="https://api.tokenfactory.nebius.com/v1/",
+            api_key=os.environ.get("NEBIUS_API_KEY"),
+        )
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         # parse the task
@@ -60,18 +67,13 @@ class GeneralWhiteAgentExecutor(AgentExecutor):
                 "content": user_input,
             }
         )
-        # TODO: Complete white agent
-        """
-        response = completion(
-            messages=messages,
-            model="google/gemini-2.5-pro",
-            custom_llm_provider="google",
-            temperature=0.0,
-        )
-        next_message = response.choices[0].message.model_dump()  # type: ignore
-        """
-        next_message = {"content" : "TODO"}
+        response = json.loads(
+            self.client.chat.completions.create(
+            model="moonshotai/Kimi-K2-Instruct",
+            messages=messages
+        ).to_json())
 
+        next_message = response["choices"][0]["message"]
         messages.append(
             {
                 "role": "assistant",

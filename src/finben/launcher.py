@@ -15,6 +15,7 @@ from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv(), override=True)
 
+
 @click.group(
     context_settings={"help_option_names": ["-h", "--help"]},
     invoke_without_command=True,
@@ -47,9 +48,7 @@ async def run():
     logger.info("Launching white agent...")
     white_address = ("localhost", os.getenv("WHITE_AGENT_PORT", 9002))
     white_url = f"http://{white_address[0]}:{white_address[1]}"
-    p_white = multiprocessing.Process(
-        target=start_white_agent, args=white_address
-    )
+    p_white = multiprocessing.Process(target=start_white_agent, args=white_address)
     p_white.start()
     assert await wait_agent_ready(white_url), "White agent not ready in time"
     logger.info("White agent is ready.")
@@ -59,10 +58,10 @@ async def run():
     task_config = {
         "env": "retail",
         "user_strategy": "llm",
-        "user_model": "google/gemini-2.5-pro",
-        "user_provider": "google",
+        "user_model": "moonshotai/Kimi-K2-Instruct",
+        "user_provider": "nebius",
         "task_split": "test",
-        "task_path" : "assets/data/public.csv",
+        "task_path": "assets/data/public.csv",
         "task_ids": [1],
     }
     task_text = f"""
@@ -85,11 +84,12 @@ async def run():
     logger.info("Evaluation complete. Terminating agents...")
     p_green.terminate()
     p_green.join()
-    #p_white.terminate()
-    #p_white.join()
+    # p_white.terminate()
+    # p_white.join()
     logger.info("Agents terminated.")
 
     logger.info("Benchmarking completed.")
+
 
 if __name__ == "__main__":
     cli()
