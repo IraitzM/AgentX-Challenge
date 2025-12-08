@@ -12,8 +12,15 @@ If uv is available, simply run
 uv run finben run
 ```
 
+For the agentbeats controller deployment in https://docs.agentbeats.org/Blogs/blog-3/#agentbeats-controller
+```sh
+agentbeats run_ctrl
+```
+
 ## Pending
 
 - [x] Indexed task
 - [x] Green agent evaluator
 - [x] White/Purple agent execution
+- [ ] Finish rubric evaluation
+- [ ] Wrap it on an accesible machine https://docs.agentbeats.org/Blogs/blog-3/#agentbeats-controller
