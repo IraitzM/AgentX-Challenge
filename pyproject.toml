@@ -7,10 +7,11 @@ name = "finben"
 version = "0.1.0"
 description = "Finance Agentic benchmark implementing a Green-Purple agent approach"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "a2a-sdk>=0.3.5",
     "asyncclick>=8.3.0.7",
+    "earthshaker>=0.2.1",
     "google-adk>=1.14.1",
     "google-genai>=1.36.0",
     "loguru>=0.7.3",
