@@ -6,6 +6,7 @@ import json
 import time
 
 import os
+from statistics import mean
 from openai import OpenAI
 import pandas as pd
 
@@ -21,9 +22,9 @@ from finben.utils import send_message, parse_tags
 
 from loguru import logger
 
-import dotenv
+from dotenv import load_dotenv, find_dotenv
 
-dotenv.load_dotenv()
+load_dotenv(find_dotenv(), override=True)
 
 
 def load_agent_card_toml(agent_color: str):
@@ -86,6 +87,77 @@ class GreenAgentExecutor(AgentExecutor):
             api_key=os.environ.get("NEBIUS_API_KEY"),
         )
 
+    def _get_rubric_messages(self, eval_type: str, question:str, received:str, expected:str, criteria:str):
+        """
+        Considering the types of the rubric returns a message to be used as evaluator
+
+        Args:
+            eval_type (str): Between 'correctness' or 'contradiction'
+            question (str): Question to be answered
+            received (str): Received answer or statement
+            expected (str): Expected answer
+            criteria (str): Criteria to be assessed
+
+        Returns:
+            list[str]: Returns the prompt to be used
+        """
+        messages = [
+            {
+                "role": "system",
+                "content": """
+                    Play the role of a judge evaluating an assignment.
+                    Your task is to assess the rightfulness of the provided answer against the expected one.
+                    The answer should be a score from 0 to 1 being 0 the lowest value and 1 the fulfillment of the criteria.
+                    You MUST only respond with a numeric value.
+                """
+            }
+        ]
+
+        if eval_type == 'correctness':
+            messages.append(
+                {
+                    "role": "user",
+                    "content": f"""
+                        Your duty is to assess the correctness of the provided answer according to the criteria we are looking for.
+
+                        Question to be answered was: {question}
+                        Provided answer: {received}
+
+                        Is according to that answer the statement {criteria} correct?
+                    """
+                }
+            )
+        elif eval_type == "contradiction":
+            messages.append(
+                {
+                    "role": "user",
+                    "content": f"""
+                        Question to be answered was: {question}
+                        Provided answer: {received}
+                        Evidence: {criteria}
+
+                        Is the evidence provided in contradiction with the provided answer?
+                    """
+                }
+            )
+        else:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": f"""
+                        Question to be answered was: {question}
+                        Provided answer: {received}
+                        Expected: {expected}
+
+                        Considering above information how much overlap would you say expected and provided answers
+                        have assuming 1 means word by word coincidence or practically same meaning.
+                    """
+                }
+            )
+
+        return messages
+
+
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         # parse the task
         logger.info("Green agent: Received a task, parsing...")
@@ -97,64 +169,68 @@ class GreenAgentExecutor(AgentExecutor):
 
         # set up the environment
         logger.info("Green agent: Setting up the environment...")
-        assert len(env_config["task_ids"]) == 1, (
-            "Only single task supported for demo purpose"
-        )
-        task_index = env_config["task_ids"][0]
         dataset_path = env_config["task_path"]
-
-        logger.info("Green agent: Starting evaluation...")
-        timestamp_started = time.time()
-        received = await ask_agent_to_solve(white_agent_url, dataset_path, task_index)
-
-        # Evaluate the response according to the dataset
-        metrics = {}
-        metrics["time_used"] = time.time() - timestamp_started
-
-        # Select for id in the file
         finben_data = pd.read_csv(dataset_path)
-        selected = finben_data.iloc[task_index, :]
+        logger.info("Green agent: Starting evaluation...")
+        metrics = {
+            "time_used" : [],
+            "time_drift" : [],
+            "rubric" : []
+        }
+        for task_index in env_config["task_ids"]:
+            timestamp_started = time.time()
+            # Launch
+            received = await ask_agent_to_solve(white_agent_url, dataset_path, task_index)
 
-        question = selected["Question"]
-        answer = selected["Answer"]
-        expected_time = int(selected["Expert time (mins)"])
-        rubric_json = json.loads(selected["Rubric"].replace("'","\"")) # To avoid issues
+            # Evaluate the response according to the dataset
+            time_taken = time.time() - timestamp_started
+            metrics["time_used"].append(time_taken)
 
-        metrics["time_drift"] = expected_time - metrics["time_used"]
+            # Select for id in the file
+            selected = finben_data.iloc[task_index, :]
 
-        metrics["rubric"] = [] # Per operation
-        for operation in rubric_json:
+            question = selected["Question"]
+            answer = selected["Answer"]
+            expected_time = int(selected["Expert time (mins)"])
+            rubric_json = json.loads(selected["Rubric"].replace("'","\"")) # To avoid issues
+
+            metrics["time_drift"].append(expected_time - time_taken)
+
+            # Per operation
+            for operation in rubric_json:
+                response = self.client.chat.completions.create(
+                    model=env_config["user_model"],
+                    messages=self._get_rubric_messages(
+                        eval_type=operation["operator"],
+                        question=question,
+                        received=received,
+                        expected=answer,
+                        criteria=operation["criteria"])
+                )
+                dict_answer = response.to_dict()
+                score = dict_answer["choices"][0]["message"]["content"]
+                metrics["rubric"].append(float(score))
+
+            # Extra to just check similarity of the answer
             response = self.client.chat.completions.create(
                 model=env_config["user_model"],
-                messages=[
-                    {
-                        "role": "system",
-                        "content": f"""
-                            Your task is to check the {operation["operator"]} considering
-                            the provided question, received and expected answer.
-                        """
-                    },
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": f"""
-                                Question: {question}
-
-                                Received answer: {received}
-                                Expected answer: {answer}
-                                """
-                            }
-                        ]
-                    }
-                ]
+                messages=self._get_rubric_messages(
+                    eval_type="similarity",
+                    question=question,
+                    received=received,
+                    expected=answer,
+                    criteria="similarity")
             )
-            metrics["rubric"].append(response.to_json())
+            dict_answer = response.to_dict()
+            score = dict_answer["choices"][0]["message"]["content"]
+            metrics["rubric"].append(float(score))
+
+        # Average scores
+        metrics["avg. score"] = mean(metrics["rubric"])
 
         logger.info("Green agent: Evaluation complete.")
         await event_queue.enqueue_event(
-            new_agent_text_message(f"Finished. \nMetrics: {metrics}\n")
+            new_agent_text_message(f"Finished. \n {metrics}\n")
         )  # alternative, impl as a task-generating agent
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:

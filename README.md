@@ -5,6 +5,10 @@ The original code for the dataset is in https://github.com/vals-ai/finance-agent
 
 ![](https://www.vals.ai/_astro/slide_LLM.wr9G0gyQ_ZnttS3.webp)
 
+## Configuration
+
+Currently uses Nebius by default and Kimi's K2 Instruct model. Make sure you add a local _.env_ file following the example in _.env.example_.
+
 ## Running the benchmark
 
 If uv is available, simply run
@@ -22,5 +26,7 @@ agentbeats run_ctrl
 - [x] Indexed task
 - [x] Green agent evaluator
 - [x] White/Purple agent execution
-- [ ] Finish rubric evaluation
+- [x] Finish rubric evaluation
 - [ ] Wrap it on an accesible machine https://docs.agentbeats.org/Blogs/blog-3/#agentbeats-controller
+
+NOTE: Last point might not be needed to register the agent in the agentbeats.dev platform.
