@@ -1,7 +1,6 @@
 """
 Main entrypoint launching the agentified benchamrk
 """
-
 import os
 import asyncclick as click
 import json
@@ -27,7 +26,6 @@ def cli(ctx, **kwargs):
     """
     Finance Benchmarking Tool
     """
-
 
 @cli.command("run")
 async def run():
@@ -62,10 +60,10 @@ async def run():
         "user_provider": "nebius",
         "task_split": "test",
         "task_path": "assets/data/public.csv",
-        "task_ids": [1],
+        "task_ids": [1, 10],
     }
     task_text = f"""
-        Your task is to instantiate finance benchmark to test the agent located at:
+        Your task is to instantiate the finance benchmark to test the agent located at:
         <white_agent_url>
         http://{white_address[0]}:{white_address[1]}/
         </white_agent_url>
@@ -84,8 +82,8 @@ async def run():
     logger.info("Evaluation complete. Terminating agents...")
     p_green.terminate()
     p_green.join()
-    # p_white.terminate()
-    # p_white.join()
+    p_white.terminate()
+    p_white.join()
     logger.info("Agents terminated.")
 
     logger.info("Benchmarking completed.")
