@@ -227,6 +227,7 @@ class GreenAgentExecutor(AgentExecutor):
 
         # Average scores
         metrics["avg. score"] = mean(metrics["rubric"])
+        metrics["task_ids"] = env_config["task_ids"]
 
         logger.info("Green agent: Evaluation complete.")
         await event_queue.enqueue_event(
