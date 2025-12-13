@@ -1,0 +1,18 @@
+FROM ghcr.io/astral-sh/uv:python3.12-trixie
+
+RUN adduser agentbeats
+USER agentbeats
+WORKDIR /home/finben/green/
+
+COPY pyproject.toml uv.lock README.md ./
+COPY src src
+
+RUN \
+    --mount=type=cache,target=/home/finben/green/.cache/uv,uid=1000 \
+    uv sync --locked
+
+COPY assets assets
+
+ENTRYPOINT ["uv", "run", "finben", "green"]
+CMD ["--host", "0.0.0.0"]
+EXPOSE 9001
