@@ -14,6 +14,15 @@ from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv(), override=True)
 
+# Set default log level to INFO
+log_level = os.getenv("LOG_LEVEL", "INFO")
+logger.remove()  # Remove default handler
+logger.add(
+    lambda msg: print(msg, end=""),
+    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}",
+    level=log_level
+)
+
 
 @click.group(
     context_settings={"help_option_names": ["-h", "--help"]},

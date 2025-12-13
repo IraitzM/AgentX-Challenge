@@ -26,6 +26,15 @@ from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv(), override=True)
 
+# Set default log level to INFO
+log_level = os.getenv("LOG_LEVEL", "INFO")
+logger.remove()  # Remove default handler
+logger.add(
+    lambda msg: print(msg, end=""),
+    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}",
+    level=log_level
+)
+
 
 def load_agent_card_toml(agent_color: str):
     """
@@ -107,8 +116,12 @@ class GreenAgentExecutor(AgentExecutor):
                 "content": """
                     Play the role of a judge evaluating an assignment.
                     Your task is to assess the rightfulness of the provided answer against the expected one.
-                    The answer should be a score from 0 to 1 being 0 the lowest value and 1 the fulfillment of the criteria.
-                    You MUST only respond with a numeric value.
+                    The answer should be a score from 0.0 to 1.0, where:
+                    - 0.0 means the criteria is completely not met
+                    - 0.5 means the criteria is partially met
+                    - 1.0 means the criteria is fully met
+                    Use fractional values (e.g., 0.2, 0.7, 0.85) to express degrees of fulfillment.
+                    You MUST only respond with a numeric value between 0.0 and 1.0.
                 """
             }
         ]
@@ -123,7 +136,12 @@ class GreenAgentExecutor(AgentExecutor):
                         Question to be answered was: {question}
                         Provided answer: {received}
 
-                        Is according to that answer the statement {criteria} correct?
+                        To what degree (0.0 to 1.0) is the statement "{criteria}" correct according to the provided answer?
+                        Use fractional values to express partial correctness. For example:
+                        - 0.0 = completely incorrect or not addressed
+                        - 0.3-0.5 = partially correct or partially addressed
+                        - 0.7-0.9 = mostly correct with minor gaps
+                        - 1.0 = completely correct
                     """
                 }
             )
@@ -136,7 +154,12 @@ class GreenAgentExecutor(AgentExecutor):
                         Provided answer: {received}
                         Evidence: {criteria}
 
-                        Is the evidence provided in contradiction with the provided answer?
+                        To what degree (0.0 to 1.0) is the evidence in contradiction with the provided answer?
+                        Use fractional values to express degrees of contradiction. For example:
+                        - 0.0 = no contradiction (evidence fully supports the answer)
+                        - 0.3-0.5 = minor contradiction or partial inconsistency
+                        - 0.7-0.9 = significant contradiction
+                        - 1.0 = complete contradiction
                     """
                 }
             )
@@ -149,8 +172,13 @@ class GreenAgentExecutor(AgentExecutor):
                         Provided answer: {received}
                         Expected: {expected}
 
-                        Considering above information how much overlap would you say expected and provided answers
-                        have assuming 1 means word by word coincidence or practically same meaning.
+                        To what degree (0.0 to 1.0) do the expected and provided answers overlap?
+                        Use fractional values to express similarity. For example:
+                        - 0.0 = completely different, no overlap
+                        - 0.2-0.4 = minimal overlap, different meaning
+                        - 0.5-0.7 = moderate overlap, similar concepts but different wording
+                        - 0.8-0.9 = high overlap, very similar meaning
+                        - 1.0 = word-by-word coincidence or practically identical meaning
                     """
                 }
             )
@@ -198,6 +226,11 @@ class GreenAgentExecutor(AgentExecutor):
 
             # Per operation
             for operation in rubric_json:
+                logger.debug(f"Evaluating rubric - Question: {question[:100]}...")
+                logger.debug(f"  Expected Answer: {answer[:100]}...")
+                logger.debug(f"  Received Answer: {received[:100]}...")
+                logger.debug(f"  Operator: {operation['operator']}")
+                logger.debug(f"  Criteria: {operation['criteria'][:200]}...")
                 response = self.client.chat.completions.create(
                     model=env_config["user_model"],
                     messages=self._get_rubric_messages(
@@ -209,9 +242,14 @@ class GreenAgentExecutor(AgentExecutor):
                 )
                 dict_answer = response.to_dict()
                 score = dict_answer["choices"][0]["message"]["content"]
+                logger.debug(f"  Score: {score}")
                 metrics["rubric"].append(float(score))
 
             # Extra to just check similarity of the answer
+            logger.debug(f"Evaluating similarity - Question: {question[:100]}...")
+            logger.debug(f"  Expected Answer: {answer[:100]}...")
+            logger.debug(f"  Received Answer: {received[:100]}...")
+            logger.debug(f"  Operator: similarity")
             response = self.client.chat.completions.create(
                 model=env_config["user_model"],
                 messages=self._get_rubric_messages(
@@ -223,6 +261,7 @@ class GreenAgentExecutor(AgentExecutor):
             )
             dict_answer = response.to_dict()
             score = dict_answer["choices"][0]["message"]["content"]
+            logger.debug(f"  Score: {score}")
             metrics["rubric"].append(float(score))
 
         # Average scores
