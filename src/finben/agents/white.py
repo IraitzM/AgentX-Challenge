@@ -14,22 +14,7 @@ import os
 import json
 from openai import OpenAI
 
-from loguru import logger
-
-import dotenv
-import os
-
-dotenv.load_dotenv()
-
-# Set default log level to INFO
-log_level = os.getenv("LOG_LEVEL", "INFO")
-logger.remove()  # Remove default handler
-logger.add(
-    lambda msg: print(msg, end=""),
-    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}",
-    level=log_level
-)
-
+from finben.config import logger
 
 def prepare_white_agent_card(url):
     skill = AgentSkill(
@@ -55,6 +40,8 @@ def prepare_white_agent_card(url):
 class GeneralWhiteAgentExecutor(AgentExecutor):
     """
     Simple white agent executor looking for the response to the task being sent
+
+    NOTE: Hardcoded for testing purposes, uses no external tool
     """
 
     def __init__(self):

@@ -18,22 +18,8 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCard, SendMessageSuccessResponse, Message
 from a2a.utils import new_agent_text_message, get_text_parts
 
+from finben.config import logger
 from finben.utils import send_message, parse_tags
-
-from loguru import logger
-
-from dotenv import load_dotenv, find_dotenv
-
-load_dotenv(find_dotenv(), override=True)
-
-# Set default log level to INFO
-log_level = os.getenv("LOG_LEVEL", "INFO")
-logger.remove()  # Remove default handler
-logger.add(
-    lambda msg: print(msg, end=""),
-    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name}:{function}:{line} - {message}",
-    level=log_level
-)
 
 
 def load_agent_card_toml(agent_color: str):
