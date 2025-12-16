@@ -1,18 +1,13 @@
 """
 Main entrypoint launching the agentified benchamrk
 """
-import os
-import asyncclick as click
-import json
 import multiprocessing
+import asyncclick as click
 
 from finben.utils import wait_agent_ready, send_message
 from finben.agents import start_green_agent, start_white_agent
 
-from loguru import logger
-from dotenv import load_dotenv, find_dotenv
-
-load_dotenv(find_dotenv(), override=True)
+from finben.config import logger, settings
 
 
 @click.group(
@@ -33,8 +28,8 @@ async def run():
     logger.info("Running the benchmark agent suite...")
 
     logger.info("Launching green agent...")
-    green_address = ("localhost", os.getenv("GREEN_AGENT_PORT", 9001))
-    green_url = f"http://{green_address[0]}:{green_address[1]}"
+    green_address = (settings.GREEN_AGENT_HOST, settings.GREEN_AGENT_PORT)
+    green_url = settings.green_url()
     p_green = multiprocessing.Process(
         target=start_green_agent, args=("green", *green_address)
     )
@@ -44,8 +39,8 @@ async def run():
 
     # start white agent
     logger.info("Launching white agent...")
-    white_address = ("localhost", os.getenv("WHITE_AGENT_PORT", 9002))
-    white_url = f"http://{white_address[0]}:{white_address[1]}"
+    white_address = (settings.WHITE_AGENT_HOST, settings.WHITE_AGENT_PORT)
+    white_url = settings.white_url()
     p_white = multiprocessing.Process(target=start_white_agent, args=white_address)
     p_white.start()
     assert await wait_agent_ready(white_url), "White agent not ready in time"
@@ -53,29 +48,10 @@ async def run():
 
     # send the task description
     logger.info("Sending task description to green agent...")
-    task_config = {
-        "env": "retail",
-        "user_strategy": "llm",
-        "user_model": "moonshotai/Kimi-K2-Instruct",
-        "user_provider": "nebius",
-        "task_split": "test",
-        "task_path": "assets/data/public.csv",
-        "task_ids": [1, 10],
-    }
-    task_text = f"""
-        Your task is to instantiate the finance benchmark to test the agent located at:
-        <white_agent_url>
-        http://{white_address[0]}:{white_address[1]}/
-        </white_agent_url>
-        You should use the following env configuration:
-        <env_config>
-        {json.dumps(task_config, indent=2)}
-        </env_config>
-    """
     logger.info("Task description:")
-    logger.info(task_text)
+    logger.info(settings.TASK_TEXT)
     logger.info("Sending...")
-    response = await send_message(green_url, task_text)
+    response = await send_message(green_url, settings.TASK_TEXT)
     logger.info("Response from green agent:")
     logger.info(response)
 

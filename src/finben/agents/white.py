@@ -14,12 +14,7 @@ import os
 import json
 from openai import OpenAI
 
-from loguru import logger
-
-import dotenv
-
-dotenv.load_dotenv()
-
+from finben.config import logger
 
 def prepare_white_agent_card(url):
     skill = AgentSkill(
@@ -45,6 +40,8 @@ def prepare_white_agent_card(url):
 class GeneralWhiteAgentExecutor(AgentExecutor):
     """
     Simple white agent executor looking for the response to the task being sent
+
+    NOTE: Hardcoded for testing purposes, uses no external tool
     """
 
     def __init__(self):
