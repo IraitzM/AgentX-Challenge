@@ -22,6 +22,21 @@ def cli(ctx, **kwargs):
     Finance Benchmarking Tool
     """
 
+@cli.command("green")
+async def deploy_green_agent():
+    """Runs the main benchmark agent suite."""
+    logger.info("Running the benchmark agent suite...")
+
+    logger.info("Launching green agent...")
+    green_address = (settings.GREEN_AGENT_HOST, settings.GREEN_AGENT_PORT)
+    green_url = settings.green_url()
+    p_green = multiprocessing.Process(
+        target=start_green_agent, args=("green", *green_address)
+    )
+    p_green.start()
+    assert await wait_agent_ready(green_url), "Green agent not ready in time"
+    logger.info("Green agent is ready.")
+
 @cli.command("run")
 async def run():
     """Runs the main benchmark agent suite."""
