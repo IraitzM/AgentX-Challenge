@@ -14,5 +14,5 @@ RUN \
 COPY assets assets
 
 ENTRYPOINT ["uv", "run", "finben", "green"]
-CMD ["--host", "0.0.0.0"]
+
 EXPOSE 9001

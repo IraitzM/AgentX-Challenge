@@ -1,0 +1,36 @@
+version: '3'
+
+vars:
+  TAG: agentx-challenge:latest
+  DOCKERFILE: Dockerfile.green
+  CONTEXT: "."
+
+tasks:
+  build:
+    desc: Build Docker image using `Dockerfile.green`
+    cmds:
+      - docker build -f "{{.DOCKERFILE}}" -t "{{.TAG}}" "{{.CONTEXT}}"
+    env:
+      DOCKER_BUILDKIT: "1"
+
+  rmi:
+    desc: Remove green agent Docker image
+    cmds:
+      - docker rm green-agent
+      - docker rmi "{{.TAG}}"
+
+  run:
+    desc: Executes a green agent instance
+    deps: [build]
+    cmds:
+      - docker run -p 9001:9001 --env-file .env --name green-agent "{{.TAG}}"
+
+  build-no-cache:
+    desc: Build image without cache
+    cmds:
+      - docker build --no-cache -f "{{.DOCKERFILE}}" -t "{{.TAG}}" "{{.CONTEXT}}"
+
+  push:
+    desc: Push the image (ensure `TAG` contains registry/name:tag)
+    cmds:
+      - docker push "{{.TAG}}"
