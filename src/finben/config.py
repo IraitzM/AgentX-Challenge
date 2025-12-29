@@ -34,6 +34,9 @@ class Settings:
         <env_config>
         {json.dumps(TASK_CONFIG, indent=2)}
         </env_config>
+
+        Available tools:
+        - google_search_tool: Allows to search for up to date information
     """
 
     def green_url(self) -> str:

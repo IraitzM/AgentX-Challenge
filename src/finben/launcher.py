@@ -63,12 +63,12 @@ async def run():
 
     # send the task description
     logger.info("Sending task description to green agent...")
-    logger.info("Task description:")
-    logger.info(settings.TASK_TEXT)
+    logger.debug("Task description:")
+    logger.debug(settings.TASK_TEXT)
     logger.info("Sending...")
     response = await send_message(green_url, settings.TASK_TEXT)
-    logger.info("Response from green agent:")
-    logger.info(response)
+    logger.debug("Response from green agent:")
+    logger.debug(response)
 
     logger.info("Evaluation complete. Terminating agents...")
     p_green.terminate()

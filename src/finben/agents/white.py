@@ -58,19 +58,30 @@ class GeneralWhiteAgentExecutor(AgentExecutor):
             self.ctx_id_to_messages[context.context_id] = []
 
         messages = self.ctx_id_to_messages[context.context_id]
+        # System instructions
+        messages.append(
+            {
+                "role": "system",
+                "content": """"
+                    You are a financial assistant providing faithful information regarding the questions posed by the user.
+                    Use invoking agent skills as tools when available to expand your knowledge.
+                """
+            })
+        # User request
         messages.append(
             {
                 "role": "user",
                 "content": user_input,
             }
         )
-        response = json.loads(
-            self.client.chat.completions.create(
+        response = self.client.chat.completions.create(
             model="moonshotai/Kimi-K2-Instruct",
             messages=messages
-        ).to_json())
+        )
+        logger.debug(f"White response {response.to_json()}")
+        response_json = json.loads(response.to_json())
 
-        next_message = response["choices"][0]["message"]
+        next_message = response_json["choices"][0]["message"]
         messages.append(
             {
                 "role": "assistant",

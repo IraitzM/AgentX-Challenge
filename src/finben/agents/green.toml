@@ -1,5 +1,5 @@
-name = "tau_green_agent"
-description = "The assessment hosting agent for tau-bench."
+name = "finben_green_agent"
+description = "The assessment hosting agent for finance bench."
 version = "0.1.0"
 
 defaultInputModes = ["text"]
@@ -11,9 +11,9 @@ streaming = false
 id = "host_assess_finance_benchmark"
 name = "Finance benchmark assessment hosting"
 description = """
-    Assess correct responses.
+    Assess correct responses and serves tools as skills.
 """
-tags = ["green agent", "assessment hosting", "tau-bench"]
+tags = ["green agent", "assessment hosting", "finance benchmark"]
 examples = ["""    
 Your task is to instantiate the finance benchmark to test the agent located at:
     <white_agent_url>
@@ -33,4 +33,18 @@ You should use the following env configuration:
   ]
 }
 </env_config>
+"""]
+
+# Expose tools as skills (https://a2a-protocol.org/latest/tutorials/python/3-agent-skills-and-card/#agent-skills)
+# - Web search tool https://github.com/vals-ai/finance-agent/blob/main/tools.py#L114
+[[skills]]
+id = "google_search_tool"
+name = "Google Search tool"
+description = """
+    Uses the SerpAPI to search the web.
+"""
+tags = ["green agent", "tools", "search web"]
+examples = ["""    
+  search_query: sql
+  response: SQL is a query language used mostly for interacting with relational database management systems.
 """]

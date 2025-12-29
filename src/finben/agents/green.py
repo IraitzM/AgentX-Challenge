@@ -67,7 +67,7 @@ async def ask_agent_to_solve(white_agent_url, dataset_path, task_index):
     text_parts = get_text_parts(res_result.parts)
     assert len(text_parts) == 1, "Expecting exactly one text part from the white agent"
     white_text = text_parts[0]
-    logger.info(f"@@@ White agent response:\n{white_text}")
+    logger.debug(f"@@@ White agent response:\n{white_text}")
 
     return white_text
 
@@ -196,6 +196,9 @@ class GreenAgentExecutor(AgentExecutor):
             # Launch
             received = await ask_agent_to_solve(white_agent_url, dataset_path, task_index)
 
+            # TODO: If tool call invoking and skill (MCP compatible)
+
+            # else
             # Evaluate the response according to the dataset
             time_taken = time.time() - timestamp_started
             metrics["time_used"].append(time_taken)
@@ -235,7 +238,7 @@ class GreenAgentExecutor(AgentExecutor):
             logger.debug(f"Evaluating similarity - Question: {question[:100]}...")
             logger.debug(f"  Expected Answer: {answer[:100]}...")
             logger.debug(f"  Received Answer: {received[:100]}...")
-            logger.debug(f"  Operator: similarity")
+            logger.debug("  Operator: similarity")
             response = self.client.chat.completions.create(
                 model=env_config["user_model"],
                 messages=self._get_rubric_messages(
@@ -250,14 +253,14 @@ class GreenAgentExecutor(AgentExecutor):
             logger.debug(f"  Score: {score}")
             metrics["rubric"].append(float(score))
 
-        # Average scores
-        metrics["avg. score"] = mean(metrics["rubric"])
-        metrics["task_ids"] = env_config["task_ids"]
+            # Average scores
+            metrics["avg. score"] = mean(metrics["rubric"])
+            metrics["task_ids"] = env_config["task_ids"]
 
-        logger.info("Green agent: Evaluation complete.")
-        await event_queue.enqueue_event(
-            new_agent_text_message(f"Finished. \n {metrics}\n")
-        )  # alternative, impl as a task-generating agent
+            logger.info("Green agent: Evaluation complete.")
+            await event_queue.enqueue_event(
+                new_agent_text_message(f"Finished. \n {metrics}\n")
+            )  # alternative, impl as a task-generating agent
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         raise NotImplementedError
@@ -281,5 +284,4 @@ def start_green_agent(agent_name="green_agent", host="localhost", port=9001):
         agent_card=AgentCard(**agent_card_dict),
         http_handler=request_handler,
     )
-
     uvicorn.run(app.build(), host=host, port=port)
