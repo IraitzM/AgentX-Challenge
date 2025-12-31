@@ -48,3 +48,8 @@ examples = ["""
   search_query: sql
   response: SQL is a query language used mostly for interacting with relational database management systems.
 """]
+required = ["search_query"]
+
+[skills.properties]
+search_query.type = "string"
+search_query.description = "String to search the web"

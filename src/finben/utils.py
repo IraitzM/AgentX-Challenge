@@ -2,6 +2,7 @@ import httpx
 import asyncio
 import uuid
 import re
+import tomllib
 from typing import Dict
 
 from loguru import logger
@@ -19,14 +20,63 @@ from a2a.types import (
 )
 
 
+def get_skills(agent_card: AgentCard) -> list[dict]:
+    """
+    Returns agent skills as OpenAI compatible tools
+    """
+
+    skills = []
+    for s in agent_card.skills:
+        # Load properties for input params
+        properties = {}
+        if "properties" in s:
+            for k in s.properties.keys():
+                properties[k] = s.properties[k]
+
+        # Skills as a function
+        function_spec = {
+            "name": s.id,
+            "description": s.description,
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+            },
+        }
+        # Check which ones are required
+        if "required" in s:
+            function_spec["parameters"]["required"] = s.required
+
+        skills.append({
+            "type": "function",
+            "name": s.id,
+            "description": s.description,
+            "function": function_spec,
+            "strict": True,
+        })
+
+    return skills
+
 def parse_tags(str_with_tags: str) -> Dict[str, str]:
-    """the target str contains tags in the format of <tag_name> ... </tag_name>, parse them out and return a dict"""
+    """
+    The target str contains tags in the format of <tag_name> ... </tag_name>, 
+    parse them out and return a dict"""
 
     tags = re.findall(r"<(.*?)>(.*?)</\1>", str_with_tags, re.DOTALL)
     return {tag: content.strip() for tag, content in tags}
 
 
+def load_agent_card_toml(agent_color: str):
+    """
+    Loads the agent card associated with a particular color agent
+    """
+    current_dir = __file__.rsplit("/", 1)[0]
+    with open(f"{current_dir}/agents/{agent_color}.toml", "rb") as f:
+        return tomllib.load(f)
+
 async def get_agent_card(url: str) -> AgentCard | None:
+    """
+    Get the agent card from provided url
+    """
     httpx_client = httpx.AsyncClient()
     resolver = A2ACardResolver(httpx_client=httpx_client, base_url=url)
 
@@ -36,7 +86,7 @@ async def get_agent_card(url: str) -> AgentCard | None:
 
 
 async def wait_agent_ready(url, timeout=10):
-    # wait until the A2A server is ready, check by getting the agent card
+    "wait until the A2A server is ready, check by getting the agent card"
     retry_cnt = 0
     while retry_cnt < timeout:
         retry_cnt += 1

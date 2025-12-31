@@ -17,6 +17,9 @@ from openai import OpenAI
 from finben.config import settings, logger
 
 def prepare_white_agent_card(url):
+    """
+    Prepares agent card using the A2A objects classes
+    """
     skill = AgentSkill(
         id="task_fulfillment",
         name="Task Fulfillment",
@@ -44,39 +47,43 @@ class GeneralWhiteAgentExecutor(AgentExecutor):
     NOTE: Hardcoded for testing purposes, uses no external tool
     """
 
-    def __init__(self):
+    def __init__(self, tools = None):
         self.ctx_id_to_messages = {}
         self.client = OpenAI(
             base_url="https://api.tokenfactory.nebius.com/v1/",
-            api_key=os.environ.get("NEBIUS_API_KEY"),
+            api_key=os.environ.get("NEBIUS_API_KEY")
         )
+        self.tools = tools
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         # parse the task
-        user_input = context.get_user_input()
-        if context.context_id not in self.ctx_id_to_messages:
-            self.ctx_id_to_messages[context.context_id] = []
+        input = context.get_user_input()
+        task = context.current_task
 
-        messages = self.ctx_id_to_messages[context.context_id]
-        # System instructions
-        messages.append(
-            {
+        if context.context_id not in self.ctx_id_to_messages:
+            # System instructions
+            self.ctx_id_to_messages[context.context_id] = [
+                {
                 "role": "system",
                 "content": """"
                     You are a financial assistant providing faithful information regarding the questions posed by the user.
-                    Use invoking agent skills as tools when available to expand your knowledge.
+                    Use tools when available to expand your knowledge.
                 """
-            })
+                }
+            ]
+
+        messages = self.ctx_id_to_messages[context.context_id]
         # User request
         messages.append(
             {
                 "role": "user",
-                "content": user_input,
+                "content": input,
             }
         )
         response = self.client.chat.completions.create(
             model=settings.WHITE_AGENT_MODEL,
-            messages=messages
+            messages=messages,
+            tools=self.tools,
         )
         logger.debug(f"White response {response.to_json()}")
         response_json = json.loads(response.to_json())
@@ -88,17 +95,29 @@ class GeneralWhiteAgentExecutor(AgentExecutor):
                 "content": next_message["content"],
             }
         )
-        await event_queue.enqueue_event(
-            new_agent_text_message(
-                next_message["content"], context_id=context.context_id
+
+        # If tool need to be called
+        if len(next_message["tool_calls"]) > 0:
+            logger.debug(f"Tool calls {len(next_message["tool_calls"])}")
+            # Green server should respond with tool response
+            # TODO: Send tool request to green server
+            await event_queue.enqueue_event(
+                new_agent_text_message(
+                    next_message["content"], context_id=context.context_id
+                )
             )
-        )
+        else:
+            await event_queue.enqueue_event(
+                new_agent_text_message(
+                    next_message["content"], context_id=context.context_id
+                )
+            )
 
     async def cancel(self, context, event_queue) -> None:
         raise NotImplementedError
 
 
-def start_white_agent(host="localhost", port=9002):
+def start_white_agent(host="localhost", port=9002, tools=None):
     """
     Initiates the white agent
 
@@ -111,7 +130,7 @@ def start_white_agent(host="localhost", port=9002):
     card = prepare_white_agent_card(url)
 
     request_handler = DefaultRequestHandler(
-        agent_executor=GeneralWhiteAgentExecutor(),
+        agent_executor=GeneralWhiteAgentExecutor(tools),
         task_store=InMemoryTaskStore(),
     )
 

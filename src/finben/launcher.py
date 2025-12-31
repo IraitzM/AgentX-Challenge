@@ -4,7 +4,7 @@ Main entrypoint launching the agentified benchamrk
 import multiprocessing
 import asyncclick as click
 
-from finben.utils import wait_agent_ready, send_message
+from finben.utils import wait_agent_ready, send_message, get_agent_card, get_skills
 from finben.agents import start_green_agent, start_white_agent
 
 from finben.config import logger, settings
@@ -52,11 +52,22 @@ async def run():
     assert await wait_agent_ready(green_url), "Green agent not ready in time"
     logger.info("Green agent is ready.")
 
+    # Get exposed tools
+    green_agent_card = await get_agent_card(green_url)
+    if green_agent_card is None:
+        raise RuntimeError("Failed to fetch green agent card")
+
+    # List available functions
+    tools = get_skills(green_agent_card)
+
     # start white agent
     logger.info("Launching white agent...")
     white_address = (settings.WHITE_AGENT_HOST, settings.WHITE_AGENT_PORT)
     white_url = settings.white_url()
-    p_white = multiprocessing.Process(target=start_white_agent, args=white_address)
+    p_white = multiprocessing.Process(
+        target=start_white_agent,
+        args=[*white_address, tools]
+    )
     p_white.start()
     assert await wait_agent_ready(white_url), "White agent not ready in time"
     logger.info("White agent is ready.")

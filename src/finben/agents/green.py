@@ -1,7 +1,6 @@
 """Green agent implementation - manages assessment and evaluation."""
 
 import uvicorn
-import tomllib
 import json
 import time
 
@@ -19,16 +18,7 @@ from a2a.types import AgentCard, SendMessageSuccessResponse, Message
 from a2a.utils import new_agent_text_message, get_text_parts
 
 from finben.config import logger
-from finben.utils import send_message, parse_tags
-
-
-def load_agent_card_toml(agent_color: str):
-    """
-    Loads the agent card associated with a particular color agent
-    """
-    current_dir = __file__.rsplit("/", 1)[0]
-    with open(f"{current_dir}/{agent_color}.toml", "rb") as f:
-        return tomllib.load(f)
+from finben.utils import send_message, parse_tags, load_agent_card_toml
 
 
 async def ask_agent_to_solve(white_agent_url, dataset_path, task_index):
@@ -197,6 +187,7 @@ class GreenAgentExecutor(AgentExecutor):
             received = await ask_agent_to_solve(white_agent_url, dataset_path, task_index)
 
             # TODO: If tool call invoking and skill (MCP compatible)
+            logger.debug(received)
 
             # else
             # Evaluate the response according to the dataset
