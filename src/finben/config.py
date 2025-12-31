@@ -12,10 +12,14 @@ load_dotenv(find_dotenv(), override=True)
 @dataclass(frozen=True)
 class Settings:
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+
     GREEN_AGENT_HOST: str = os.getenv("GREEN_AGENT_HOST", "localhost")
     GREEN_AGENT_PORT: int = int(os.getenv("GREEN_AGENT_PORT", "9001"))
+
     WHITE_AGENT_HOST: str = os.getenv("WHITE_AGENT_HOST", "localhost")
     WHITE_AGENT_PORT: int = int(os.getenv("WHITE_AGENT_PORT", "9002"))
+    WHITE_AGENT_MODEL: str = os.getenv("WHITE_AGENT_MODEL", "moonshotai/Kimi-K2-Instruct")
+
     TASK_CONFIG = {
         "env": "retail",
         "user_strategy": "llm",

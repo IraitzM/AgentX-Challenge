@@ -14,7 +14,7 @@ import os
 import json
 from openai import OpenAI
 
-from finben.config import logger
+from finben.config import settings, logger
 
 def prepare_white_agent_card(url):
     skill = AgentSkill(
@@ -75,7 +75,7 @@ class GeneralWhiteAgentExecutor(AgentExecutor):
             }
         )
         response = self.client.chat.completions.create(
-            model="moonshotai/Kimi-K2-Instruct",
+            model=settings.WHITE_AGENT_MODEL,
             messages=messages
         )
         logger.debug(f"White response {response.to_json()}")
